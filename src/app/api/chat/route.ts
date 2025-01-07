@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
+import { ChatResponse } from '@/app/types/chat';
 
-// Initialize Supabase and OpenAI in the API route, not the client
+// Initialize Supabase and OpenAI
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -10,7 +11,6 @@ const supabase = createClient(
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-  // No need for dangerouslyAllowBrowser here as this is server-side
 });
 
 export async function POST(req: Request) {
@@ -23,14 +23,18 @@ export async function POST(req: Request) {
       input: message,
     });
 
-    // Get context from Supabase
+    // Determine which function to call
     let functionName = 'find_related_customer';
+    let table = 'customers';
     if (message.toLowerCase().includes('product')) {
       functionName = 'find_related_products';
+      table = 'products';
     } else if (message.toLowerCase().includes('invoice')) {
       functionName = 'find_related_invoices';
+      table = 'invoices';
     }
 
+    // Get context from Supabase
     const { data: context, error } = await supabase.rpc(
       functionName,
       { question_vector: embedding.data[0].embedding }
@@ -54,14 +58,18 @@ export async function POST(req: Request) {
       max_tokens: 150
     });
 
-    return NextResponse.json({
-      content: completion.choices[0].message.content
-    });
+    const response: ChatResponse = {
+      content: completion.choices[0].message.content,
+      table,
+      contextLength: context?.length ?? 0
+    };
+
+    return NextResponse.json(response);
 
   } catch (error: any) {
     console.error('Error:', error);
     return NextResponse.json(
-      { error: error.message || 'An error occurred' },
+      { error: error.message || 'An error occurred' } as ChatResponse,
       { status: 500 }
     );
   }

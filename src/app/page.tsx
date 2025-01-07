@@ -1,30 +1,31 @@
 'use client';
 
-import { useState } from 'react';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { useState, useRef, useEffect } from 'react';
+import ChatInput from './components/ui/ChatInput';
+import ChatMessage from './components/ui/ChatMessage';
+import { Message, ChatResponse } from '../types/chat';
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  async function handleQuestion(e: React.FormEvent) {
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
     setIsLoading(true);
-    const userMessage = { role: 'user', content: input };
+    const userMessage: Message = { role: 'user', content: input };
 
     try {
-      // Add user message immediately
       setMessages(prev => [...prev, userMessage]);
       setInput('');
 
-      // Make API call to our backend
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -32,12 +33,15 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: ChatResponse = await response.json();
 
-      // Add AI response to chat
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: data.content
@@ -62,47 +66,22 @@ export default function Home() {
           <div className="h-[500px] overflow-y-auto mb-6 space-y-4 p-4 bg-gray-50 rounded-lg">
             {messages.length === 0 ? (
               <p className="text-gray-500 text-center">
-                Ask me anything about your e-commerce data!
+                Ask me about your customers, products, or invoices!
               </p>
             ) : (
-              messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex ${
-                    msg.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg p-3 ${
-                      msg.role === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100'
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
-                </div>
+              messages.map((message, idx) => (
+                <ChatMessage key={idx} message={message} />
               ))
             )}
+            <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleQuestion} className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about customers, products, or invoices..."
-              className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50"
-            >
-              {isLoading ? '...' : 'Send'}
-            </button>
-          </form>
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            handleSubmit={handleSubmit}
+            isLoading={isLoading}
+          />
         </div>
       </div>
     </main>
