@@ -1,27 +1,29 @@
-// app/api/chat/route.ts
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Initialize Supabase and OpenAI in the API route, not the client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY!,
+  // No need for dangerouslyAllowBrowser here as this is server-side
 });
 
 export async function POST(req: Request) {
   try {
     const { message } = await req.json();
 
-    // Get embeddings for the question
+    // Get embeddings
     const embedding = await openai.embeddings.create({
       model: "text-embedding-3-small",
       input: message,
     });
 
-    // Determine which table to query based on message content
+    // Get context from Supabase
     let functionName = 'find_related_customer';
     if (message.toLowerCase().includes('product')) {
       functionName = 'find_related_products';
@@ -29,7 +31,6 @@ export async function POST(req: Request) {
       functionName = 'find_related_invoices';
     }
 
-    // Get relevant context from Supabase
     const { data: context, error } = await supabase.rpc(
       functionName,
       { question_vector: embedding.data[0].embedding }
@@ -43,23 +44,24 @@ export async function POST(req: Request) {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that answers questions about e-commerce data. Use only the provided context to answer questions. If you can't find the information in the context, say so."
+          content: "You are a helpful assistant that answers questions about e-commerce data. Use only the provided context to answer questions."
         },
         {
           role: "user",
           content: `Question: ${message}\nContext: ${JSON.stringify(context)}`
         }
       ],
+      max_tokens: 150
     });
 
     return NextResponse.json({
       content: completion.choices[0].message.content
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error:', error);
     return NextResponse.json(
-      { error: 'Failed to process request' },
+      { error: error.message || 'An error occurred' },
       { status: 500 }
     );
   }
