@@ -23,36 +23,59 @@ export async function POST(request: Request) {
 
     // Predefined functions and descriptions
     const functionsMetadata = [
-      { name: 'find_related_customer', description: 'Find customer-related information.' },
-      { name: 'find_related_products', description: 'Find product-related information.' },
-      { name: 'find_related_invoices', description: 'Find invoice-related information.' },
+      { 
+        name: 'find_related_customer',
+        category: 'customer',
+        topics: ['account', 'profile', 'login', 'preferences', 'personal details', 'contact information']
+      },
+      { 
+        name: 'find_related_products',
+        category: 'product',
+        topics: ['items', 'inventory', 'specifications', 'pricing', 'availability', 'features']
+      },
+      { 
+        name: 'find_related_invoices',
+        category: 'order',
+        topics: ['payment', 'transaction', 'invoice', 'order status', 'shipping', 'receipt']
+      },
     ];
 
-    // Match query embedding with function descriptions using OpenAI's own similarity API
     const matchResponse = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content: `You are a helper for matching user queries to the correct Supabase function. Use the descriptions of these functions to determine which one is most relevant:
-          1. "Find customer-related information."
-          2. "Find product-related information."
-          3. "Find invoice-related information."`,
+          content: `You are an e-commerce assistant. Analyze the user's question and categorize it into one of these areas:
+          - CUSTOMER: Questions about accounts, profiles, personal details, or preferences
+          - PRODUCT: Questions about items, inventory, specifications, or pricing
+          - ORDER: Questions about payments, invoices, order status, or shipping
+          - NONE: If the question doesn't fit any category
+
+          Respond with just the category name (CUSTOMER, PRODUCT, ORDER, or NONE). If you're unsure or the question is unrelated, respond with NONE.`,
         },
         { role: 'user', content: `Question: ${message}` },
       ],
       temperature: 0,
-      max_tokens: 50,
+      max_tokens: 10,
     });
 
-    const matchedFunction = functionsMetadata.find((fn) =>
-      matchResponse.choices[0].message.content.toLowerCase().includes(fn.description.toLowerCase())
+    const category = matchResponse.choices[0].message.content?.trim().toUpperCase();
+    
+    if (category === 'NONE') {
+      return NextResponse.json({ 
+        content: "I apologize, but I can only help with questions related to customers, products, or orders. Could you please rephrase your question or ask something related to these topics?" 
+      });
+    }
+
+    const matchedFunction = functionsMetadata.find(fn => 
+      fn.category.toUpperCase() === category
     );
 
     if (!matchedFunction) {
       throw new Error('No relevant function found for the given query.');
     }
 
+    console.log('Selected category:', category);
     console.log('Selected function:', matchedFunction.name);
 
     // Call the matched Supabase function with the query embedding
