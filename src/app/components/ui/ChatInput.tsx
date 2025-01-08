@@ -15,17 +15,13 @@ export default function ChatInput({ input, setInput, handleSubmit, isLoading }: 
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Ask about products, customers, or invoices related to your Stripe data."
-        className="flex-1 px-4 py-3 border border-gray-200 rounded-sm 
-                 focus:outline-none focus:ring-1 focus:ring-black
-                 font-light text-sm"
+        className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 outline-none transition-all"
         disabled={isLoading}
       />
       <button
         type="submit"
         disabled={isLoading}
-        className="px-6 py-3 bg-black text-white rounded-sm 
-                 hover:bg-gray-800 disabled:opacity-50 
-                 transition-colors duration-200 text-sm font-light"
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? '...' : 'Send'}
       </button>
