@@ -61,7 +61,7 @@ export default function Home() {
     <main className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h1 className="text-2xl font-bold mb-6">E-commerce Assistant</h1>
+          <h1 className="text-2xl font-bold mb-6">e-commerce assistant</h1>
           
           <div className="h-[500px] overflow-y-auto mb-6 space-y-4 p-4 bg-gray-50 rounded-lg">
             {messages.length === 0 ? (
