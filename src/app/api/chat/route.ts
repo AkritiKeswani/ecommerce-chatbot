@@ -21,82 +21,63 @@ export async function POST(request: Request) {
       input: message,
     });
 
-    // Predefined embeddings for Supabase function descriptions
+    // Predefined functions and descriptions
     const functionsMetadata = [
-      {
-        name: 'find_related_customer',
-        description: 'Find information related to customers.',
-      },
-      {
-        name: 'find_related_products',
-        description: 'Find information related to products.',
-      },
-      {
-        name: 'find_related_invoices',
-        description: 'Find information related to invoices.',
-      },
+      { name: 'find_related_customer', description: 'Find customer-related information.' },
+      { name: 'find_related_products', description: 'Find product-related information.' },
+      { name: 'find_related_invoices', description: 'Find invoice-related information.' },
     ];
 
-    // Generate embeddings for the descriptions of each function
-    const metadataEmbeddings = await Promise.all(
-      functionsMetadata.map(async (fn) => {
-        const embedding = await openai.embeddings.create({
-          model: 'text-embedding-ada-002',
-          input: fn.description,
-        });
-        return { ...fn, embedding: embedding.data[0].embedding };
-      })
+    // Match query embedding with function descriptions using OpenAI's own similarity API
+    const matchResponse = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a helper for matching user queries to the correct Supabase function. Use the descriptions of these functions to determine which one is most relevant:
+          1. "Find customer-related information."
+          2. "Find product-related information."
+          3. "Find invoice-related information."`,
+        },
+        { role: 'user', content: `Question: ${message}` },
+      ],
+      temperature: 0,
+      max_tokens: 50,
+    });
+
+    const matchedFunction = functionsMetadata.find((fn) =>
+      matchResponse.choices[0].message.content.toLowerCase().includes(fn.description.toLowerCase())
     );
 
-    // Helper function to calculate cosine similarity
-    const cosineSimilarity = (vecA: number[], vecB: number[]): number => {
-      const dotProduct = vecA.reduce((sum, a, idx) => sum + a * vecB[idx], 0);
-      const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
-      const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
-      return dotProduct / (magnitudeA * magnitudeB);
-    };
-
-    // Find the most relevant function based on cosine similarity
-    const bestMatch = metadataEmbeddings.reduce(
-      (best, current) => {
-        const similarity = cosineSimilarity(queryEmbedding.data[0].embedding, current.embedding);
-        return similarity > best.similarity ? { ...current, similarity } : best;
-      },
-      { name: '', description: '', similarity: -1 }
-    );
-
-    if (!bestMatch.name) {
+    if (!matchedFunction) {
       throw new Error('No relevant function found for the given query.');
     }
 
-    console.log('Selected function:', bestMatch.name);
+    console.log('Selected function:', matchedFunction.name);
 
     // Call the matched Supabase function with the query embedding
-    const { data: documents, error } = await supabase.rpc(bestMatch.name, {
+    const { data: documents, error } = await supabase.rpc(matchedFunction.name, {
       question_vector: queryEmbedding.data[0].embedding,
     });
 
     if (error) throw error;
 
-    // Format the context data for OpenAI
+    // Format the context for the final AI response
     const context = documents
       ?.map((doc: any) => doc.document_content)
       .join('\n');
 
     if (!context) {
-      return NextResponse.json({
-        content: 'No relevant information found for your query.',
-      });
+      return NextResponse.json({ content: 'No relevant information found for your query.' });
     }
 
-    // Get the AI's response based on the retrieved context
+    // Generate the final AI response
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content:
-            'You are an intelligent assistant. Use the provided context to answer the user’s query clearly and concisely.',
+          content: 'You are an intelligent assistant. Use the provided context to answer the user’s query clearly and concisely.',
         },
         {
           role: 'user',
@@ -111,6 +92,7 @@ export async function POST(request: Request) {
       content: completion.choices[0].message.content,
     });
   } catch (error: any) {
+    // Log the error and return a 500 status code
     console.error('Error:', error);
     return NextResponse.json(
       { error: error.message || 'An error occurred' },

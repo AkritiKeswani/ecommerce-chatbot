@@ -14,7 +14,7 @@ export default function ChatInput({ input, setInput, handleSubmit, isLoading }: 
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Ask about products, customers, or invoices..."
+        placeholder="Ask about products, customers, or invoices related to your Stripe data."
         className="flex-1 px-4 py-3 border border-gray-200 rounded-sm 
                  focus:outline-none focus:ring-1 focus:ring-black
                  font-light text-sm"
