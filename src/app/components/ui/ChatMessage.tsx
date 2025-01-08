@@ -13,13 +13,15 @@ export default function ChatMessage({ message }: ChatMessageProps) {
       }`}
     >
       <div
-        className={`max-w-[80%] rounded-lg p-3 ${
+        className={`max-w-[80%] rounded-sm px-4 py-3 font-light ${
           message.role === 'user'
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-100'
+            ? 'bg-black text-white'
+            : 'bg-gray-50 border border-gray-200'
         }`}
       >
-        {message.content}
+        <pre className="whitespace-pre-wrap font-mono text-sm">
+          {message.content}
+        </pre>
       </div>
     </div>
   );

@@ -15,36 +15,34 @@ export async function POST(request: Request) {
   try {
     const { message } = await request.json();
 
-    // Get embeddings
+    // Generate embedding for the question
     const embedding = await openai.embeddings.create({
-      model: "text-embedding-3-small",
+      model: "text-embedding-ada-002",
       input: message,
     });
 
     // Determine which function to call
     let functionName = 'find_related_customer';
+    console.log('Original message:', message);
     if (message.toLowerCase().includes('product')) {
       functionName = 'find_related_products';
     } else if (message.toLowerCase().includes('invoice')) {
       functionName = 'find_related_invoices';
     }
+    console.log('Selected function:', functionName);
 
-    // Query Supabase
-    const { data: results, error: supabaseError } = await supabase.rpc(
+    // Call Supabase function with the embedding
+    const { data: documents, error } = await supabase.rpc(
       functionName,
       { question_vector: embedding.data[0].embedding }
     );
 
-    if (supabaseError) {
-      console.error('Supabase error:', supabaseError);
-      throw new Error(`Database query failed: ${supabaseError.message}`);
-    }
+    if (error) throw error;
 
-    // Extract content from results
-    const context = results?.map(result => ({
-      content: result.document_content,
-      metadata: result.metadata
-    }));
+    // Format the context data more cleanly before sending to GPT
+    const context = documents?.map(document => {
+      return document.document_content;
+    }).join('\n');
 
     // Get AI response
     const completion = await openai.chat.completions.create({
@@ -52,14 +50,23 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: "You are a helpful e-commerce assistant. Answer questions using only the provided context about customers, products, and invoices. If you can't find relevant information in the context, say so."
+          content: `You are a product catalog assistant. When listing products:
+          - Format in two columns like this:
+            1. Product Name          4. Product Name
+            2. Product Name          5. Product Name
+            3. Product Name          6. Product Name
+          - Use proper spacing (at least 4 spaces between columns)
+          - List ONLY the product names
+          - Don't include any other information
+          - Don't add any extra text or explanations
+          - Maximum 2 columns`
         },
         {
           role: "user",
-          content: `Question: ${message}\n\nContext: ${JSON.stringify(context)}`
+          content: `Question: ${message}\n\nAvailable Information:\n${context}`
         }
       ],
-      temperature: 0.7,
+      temperature: 0.3,
       max_tokens: 500
     });
 

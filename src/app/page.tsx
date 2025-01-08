@@ -58,15 +58,15 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h1 className="text-2xl font-bold mb-6">e-commerce assistant</h1>
+    <main className="min-h-screen bg-white">
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="py-8">
+          <h1 className="text-xl font-light mb-8 text-center">ecommerce assistant</h1>
           
-          <div className="h-[500px] overflow-y-auto mb-6 space-y-4 p-4 bg-gray-50 rounded-lg">
+          <div className="h-[600px] overflow-y-auto mb-6 space-y-4 px-2">
             {messages.length === 0 ? (
-              <p className="text-gray-500 text-center">
-                Ask me about your customers, products, or invoices!
+              <p className="text-gray-400 text-center text-sm font-light">
+                Ask me about products, customers, or invoices
               </p>
             ) : (
               messages.map((message, idx) => (
