@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import ChatInput from './components/ui/ChatInput';
 import ChatMessage from './components/ui/ChatMessage';
-import { Message, ChatResponse } from '../types/chat';
+import { Message, ChatResponse } from './types/chat';
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
