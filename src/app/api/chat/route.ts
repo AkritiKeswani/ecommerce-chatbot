@@ -60,9 +60,9 @@ export async function POST(request: Request) {
           - ORDER: Questions about payments, invoices, order status, shipping, transactions, purchases, deliveries
           - NONE: If the question is completely unrelated to e-commerce
 
-          Respond with just the category name. Be lenient in categorization - if the question has any relation to these topics, categorize it accordingly. Only use NONE for completely unrelated queries.`,
+          Respond with just the category name. Be lenient in categorization - if the question has any relation to these topics, categorize it accordingly. Only use NONE for completely unrelated queries.`
         },
-        { role: 'user', content: message },
+        { role: 'user', content: message }
       ],
       temperature: 0.3,
       max_tokens: 10,
